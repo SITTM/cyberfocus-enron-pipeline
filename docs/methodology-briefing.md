@@ -73,6 +73,16 @@ The top 500 senders by volume are additionally hand-reviewed. Each annotation ca
 tier (`court_record` / `regulatory` / `major_press` / `corpus_internal` / `none`), a source URL where
 one genuinely exists, and a confidence rating.
 
+**The Whistleblower class has been measured and is not viable as a statistical group.** A full scan of
+the corpus finds that **Sherron Watkins is not a custodian** — there is no `watkins-s` mailbox — and that
+she authored exactly **7 unique messages** across the entire corpus. She is *referenced* in 139 files
+spanning 33 custodian mailboxes, but as a correspondent and a subject of discussion, not as an author.
+Seven authored messages cannot support any per-person linguistic measure. Vince Kaminski, the second
+internal dissenter usually named in the literature, *is* a custodian — and is in fact the largest mailbox
+in the corpus at 28,465 messages, which raises the opposite problem of role confounding (he was Head of
+Risk Management). The Whistleblower group is therefore treated as a **qualitative case study**, not a
+comparison group. See §6.
+
 **We wish to flag a limitation honestly rather than obscure it.** Authoritative external evidence
 exists for perhaps 30–60 individuals — the indicted, the executives, those who testified. The
 remaining several hundred are mid-level traders, schedulers and analysts with no public record
@@ -349,8 +359,11 @@ We record these now so they are in the methods section rather than the reviews.
    stylistic trace? *ACM Computing Surveys*, 52(3). arXiv:1902.08939.
 5. Iqbal, F., Binsalleeh, H., Fung, B. C. M., & Debbabi, M. (2010). Mining writeprints from anonymous
    e-mails for forensic investigation. *Digital Investigation*, 7(1–2), 56–64.
-6. Keila, P. S., & Skillicorn, D. B. (2005). Detecting unusual and deceptive communication in email.
-   *Proceedings of CASCON 2005*, Toronto.
+6. Keila, P. S., & Skillicorn, D. B. (2005). Structure in the Enron email dataset. *Computational and
+   Mathematical Organization Theory*, 11(3), 183–199.
+   *(Note: the frequently-cited companion title "Detecting unusual and deceptive communication in email"
+   does not match the DBLP record, which lists "Detecting unusual email communication", CASCON 2005,
+   117–125. Resolve before citing the CASCON paper.)*
 7. Larcker, D. F., & Zakolyukina, A. A. (2012). Detecting deceptive discussions in conference calls.
    *Journal of Accounting Research*, 50(2), 495–540.
 8. Little, M. A., Varoquaux, G., Saeb, S., Lonini, L., Jayaraman, A., Mohr, D. C., & Kording, K. P.
