@@ -72,3 +72,51 @@
   machine; ETA is therefore ~4.8-5.7 hours, and this figure will not
   improve materially from further GPU/batch tuning.
 - Tags: performance, gpu, cupy, cpu-contention, batch-size
+
+[2026-08-22] Content dedup surfaces a signature-stripping gap; fixed
+- Context: built dedupe.py to find different Message-IDs whose authored_text
+  (quotes/forwards already stripped) is identical after normalisation, per
+  user request. Ran on the 20,439-email smoke test.
+- Finding 1 (bug): the largest signature-driven duplicate group was
+  "Sue Mara / Enron Corp. / Tel: (415) 782-7802 / Fax:(415) 782-7854" --
+  a bare contact-block signature with no closing word ("Thanks,"/"Regards,")
+  to trigger the existing _SIGNOFF_RE heuristic in extract.py. This directly
+  violated the requirement to ignore signatures when assessing duplicates.
+- Fix: added a second signature heuristic to extract.py -- inspect the last
+  blank-line-separated block of the authored text; if it's <=6 lines and
+  contains a Tel:/Fax:/Phone:/Cell:/Mobile: label or a phone-number pattern,
+  strip it regardless of whether a closing word introduced it. Bumped
+  EXTRACT_VERSION v1->v2 and FEATURE_VERSION v1-placeholder->v2-placeholder
+  so stage_status correctly re-queued all 20,439 emails for reprocessing
+  under the new version (this is exactly the scenario the (stage, version)
+  keying was designed for).
+- Verified: the Sue Mara message's authored_text is now '' (0 chars) --
+  correct, since that email's entire body was the signature.
+- Effect on dedup: groups 4593->4550, in-group emails 12013->11896 after
+  the fix. Smaller than expected because most of the biggest duplicate
+  groups turned out to be automated bulk notifications (recurring reports,
+  subscription notices), not human signatures -- see Finding 2.
+- Finding 2 (not a bug, a corpus characteristic): ~70% of authored-text-
+  bearing smoke-test emails fall into SOME duplicate group. Inspecting the
+  largest groups shows most are automated recurring content sent to a
+  human-looking From address (e.g. a daily "EnronOnline Executive Summary",
+  a "Kudlow Commentary" subscription notice, an "Investor Relations" report
+  distribution) -- not the ingest.py AUTOMATED_TOKENS address-based filter's
+  target (that filter checks the local-part of the address, e.g.
+  "noreply@", not the content). This is real duplication by the literal
+  definition, but is a different phenomenon from human copy-paste, and
+  should probably be excluded from per-person language statistics on a
+  different basis (content pattern or high per-sender duplication rate)
+  than the current address-based is_automated flag. Not fixed -- flagged
+  for a future decision on how automated-content senders should be treated
+  in aggregate.py.
+- Second bug found in the same session: after freeing GPU VRAM, the
+  --device gpu default batch_size (512, set in the earlier 2026-08-22 entry)
+  OOM'd against the OLD hardcoded 2GB cupy pool cap, which had been sized
+  for the 3GB-free constrained environment before the llama-server was
+  killed. Fixed by querying actual free VRAM at runtime
+  (cupy.cuda.runtime.memGetInfo()) and setting the pool limit to 70% of
+  free, rather than any fixed constant -- robust to whatever else is using
+  the GPU at run time. Crash was clean (occurred before any stage_status
+  commit); no partial/corrupt state to clean up.
+- Tags: extraction, signature-stripping, dedup, gpu, cupy, oom

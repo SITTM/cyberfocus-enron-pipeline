@@ -12,8 +12,8 @@ from pathlib import Path
 
 import spacy
 
-FEATURE_VERSION = "v1-placeholder"
-EXTRACT_VERSION = "v1"  # must match extract.EXTRACT_VERSION
+FEATURE_VERSION = "v2-placeholder"
+EXTRACT_VERSION = "v2"  # must match extract.EXTRACT_VERSION
 
 UNIVERSAL_POS_TAGS = (
     "ADJ", "ADP", "ADV", "AUX", "CCONJ", "DET", "INTJ", "NOUN", "NUM",
@@ -58,13 +58,17 @@ def run(db_path: Path, batch_size: int = 200, n_process: int = 1, device: str = 
     print(f"Analysing {len(rows)} email(s) with feature_set_version={FEATURE_VERSION} device={device}")
 
     if device == "gpu":
-        # Cap the cupy pool: this machine's GPU is shared with other processes
-        # (e.g. a local llama-server) and typically has only 2-3GB free.
+        # This machine's GPU is shared with other processes (e.g. a local
+        # llama-server) whose VRAM usage varies run to run -- a hardcoded
+        # pool limit already caused one OOM after freed VRAM let a larger
+        # default batch_size through (see troubleshooting.log, 2026-08-22).
+        # Size the pool from actually-free VRAM instead of a fixed constant.
         # n_process must stay 1 -- multiprocessing would spawn multiple CUDA
         # contexts and is not supported for GPU pipes.
         import cupy
 
-        cupy.get_default_memory_pool().set_limit(size=2 * 1024**3)
+        free_bytes, _total_bytes = cupy.cuda.runtime.memGetInfo()
+        cupy.get_default_memory_pool().set_limit(size=int(free_bytes * 0.7))
         spacy.require_gpu()
         n_process = 1
 

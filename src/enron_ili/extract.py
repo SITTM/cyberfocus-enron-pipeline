@@ -19,7 +19,7 @@ from pathlib import Path
 
 import quotequail
 
-EXTRACT_VERSION = "v1"
+EXTRACT_VERSION = "v2"
 PARSE_VERSION = "v1"  # must match ingest.STAGE_VERSION for the 'parsed' stage
 
 # Lotus Notes / cc:Mail quote idiom: "Name <addr> on MM/DD/YYYY HH:MM:SS AM/PM"
@@ -40,6 +40,14 @@ _SIGNOFF_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Bare contact-block signatures (name / company / Tel: / Fax: with no
+# closing word) are common in this corpus and were missed by _SIGNOFF_RE --
+# found via dedupe.py surfacing them as false duplicate content (a
+# signature block is identical across all of one person's emails). See
+# troubleshooting.log, 2026-08-22.
+_PHONE_LABEL_RE = re.compile(r"^\s*(tel|fax|phone|cell|mobile)\s*:", re.IGNORECASE)
+_PHONE_NUMBER_RE = re.compile(r"\(?\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}")
+
 
 def _first_lotus_cut(text: str) -> int | None:
     positions = [m.start() for m in _LOTUS_WROTE_RE.finditer(text)]
@@ -52,6 +60,21 @@ def _strip_signature(text: str) -> str:
     for i, line in enumerate(lines):
         if _SIGNOFF_RE.match(line) and (len(lines) - i) <= 8:
             return "\n".join(lines[:i]).rstrip()
+
+    # Trailing contact block: look at the last blank-line-separated chunk.
+    # If it's short and contains a phone/fax marker, treat the whole chunk
+    # as a signature, regardless of whether a closing word introduced it.
+    last_blank = -1
+    for i in range(len(lines) - 1, -1, -1):
+        if lines[i].strip() == "":
+            last_blank = i
+            break
+    tail = lines[last_blank + 1 :] if last_blank >= 0 else lines
+    if 0 < len(tail) <= 6 and any(
+        _PHONE_LABEL_RE.search(l) or _PHONE_NUMBER_RE.search(l) for l in tail
+    ):
+        return "\n".join(lines[: last_blank + 1] if last_blank >= 0 else []).rstrip()
+
     return text
 
 

@@ -19,6 +19,8 @@ Run in order; each is idempotent and resumable via `stage_status`.
 5. aggregate.py  roll features up to per-person, per-role means
 ```
 
+`dedupe.py` is a standalone report, not a pipeline stage (see below).
+
 ## Usage
 
 ```
@@ -31,13 +33,25 @@ python3 src/enron_ili/ingest.py \
 python3 src/enron_ili/extract.py \
     --db db/enron.sqlite --maildir /home/jez/data/enron/maildir
 
-python3 src/enron_ili/analyze.py --db db/enron.sqlite --n-process 28
+# GPU is the recommended default on this machine: measured CPU throughput
+# is unstable under contention from other concurrent sessions, and
+# multiprocessing (n_process>1) gives no benefit for short message bodies
+# (IPC overhead dominates). See troubleshooting.log, 2026-08-22.
+python3 src/enron_ili/analyze.py --db db/enron.sqlite --device gpu
 
 python3 src/enron_ili/annotate.py \
     --db db/enron.sqlite --out annotations/top500.csv --top-n 500
 
 python3 src/enron_ili/aggregate.py \
     --db db/enron.sqlite --out annotations/person_stats.csv
+
+# Content-based duplicate detection: finds DIFFERENT messages whose
+# authored text (quotes/forwards/signatures already stripped by
+# extract.py) is identical after normalisation. Distinct from ingest.py's
+# Message-ID dedup. Exact-match only (v1); writes a standalone report,
+# does not modify the schema.
+python3 src/enron_ili/dedupe.py \
+    --db db/enron.sqlite --out annotations/duplicate_groups.csv
 ```
 
 ## Design notes
@@ -53,8 +67,15 @@ python3 src/enron_ili/aggregate.py \
 
 ## Known limitations (see docs/prior-work-survey.md and troubleshooting.log)
 
-- Body extraction (quotequail + a supplementary Lotus Notes regex) is a
-  heuristic, not a validated parser. Precision/recall against a hand-annotated
-  sample has not yet been measured.
+- Body extraction (quotequail + a supplementary Lotus Notes regex + a
+  bare-contact-block signature heuristic) is a heuristic, not a validated
+  parser. Precision/recall against a hand-annotated sample has not yet been
+  measured.
 - The Whistleblower role is not a viable statistical group: Sherron Watkins
   is not a custodian and authored only 7 messages in the whole corpus.
+- On the 4-custodian smoke test, content-based dedup (`dedupe.py`) found
+  ~70% of authored-text-bearing emails fall into a duplicate group, but
+  most of the largest groups are automated bulk notifications (daily
+  reports, subscription notices), not human-authored repeated content --
+  see the dedupe run notes for detail before treating this rate as
+  representative of genuine human duplication.
