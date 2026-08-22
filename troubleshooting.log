@@ -1,0 +1,48 @@
+[2026-08-22] Body extraction: quotequail misses Lotus Notes quote idiom
+- Symptom: quotequail correctly splits on "-----Original Message-----" (Outlook)
+  but does NOT split on the Lotus Notes idiom "Name <email> on MM/DD/YYYY HH:MM:SS AM/PM"
+  followed by To:/cc:/Subject: lines with no ">" quote markers. Confirmed on
+  skilling-j/sent_items/39. — an entire inline-quoted message from Kevin Compton
+  was left inside the "EXPAND" (authored) chunk.
+- Root cause: quotequail's pattern set (_patterns.py) targets Outlook/Gmail/etc.
+  reply idioms; Enron mailboxes are heavily Lotus Notes / cc:Mail in origin
+  (X-Folder headers reference "Notes Folders"), a client quotequail doesn't model.
+- Fix: added a supplementary regex pass in extract.py for the Lotus Notes
+  "<name> on <date>" + To:/cc:/Subject: idiom, plus a "Forwarded by ... on <date>"
+  idiom. Take the EARLIEST cut point between quotequail's first quoted-chunk
+  start and the regex match, use that as the authored/quoted boundary.
+- Status: mitigated, not solved. This is a heuristic, not a validated parser.
+  Per docs/prior-work-survey.md §3.1/§7: 300-500 bodies must be hand-annotated
+  and extraction precision/recall reported before any results are trusted.
+- Tags: extraction, quotequail, lotus-notes, enron-corpus
+
+[2026-08-22] analyze.py throughput and CPU contention on shared machine
+- Symptom: full-corpus spaCy analysis estimated at ~3.7h based on an initial
+  20k-email run (39.4 docs/sec, n_process=4, CPU). A follow-up attempt to
+  speed this up (exclude spacy's 'parser' component, more processes) showed
+  NO improvement and a subsequent benchmark measured CPU throughput had
+  dropped to 14.8 docs/sec.
+- Root cause: this machine runs multiple concurrent Claude Code sessions.
+  `top` showed load average 17-23 with a single non-pipeline process pegged
+  at ~26 CPU-cores. CPU throughput for this pipeline is NOT stable and
+  depends on what else is running on the machine at the time.
+- Also: excluding spaCy's 'parser' component is safe (verified pos_ tags are
+  produced by 'tagger'+'attribute_ruler', not 'parser') and is kept as a
+  real optimisation, but multiprocessing (n_process>1) does not help for
+  short Enron message bodies -- IPC/pickling overhead dominates compute for
+  small docs.
+- Fix: added GPU support to analyze.py (--device gpu). GPU is idle on this
+  machine and unaffected by other sessions' CPU contention. Constraint: the
+  GPU (RTX 3500 Ada, 12GB) is shared with a running llama-server using ~9GB,
+  leaving ~3GB free -- cupy OOM'd at batch_size=500. Fixed with
+  cupy.get_default_memory_pool().set_limit(size=2*1024**3) and batch_size=64
+  (measured best of 32/64/128). GPU n_process is forced to 1 (multiprocessing
+  is not supported with a single shared CUDA context).
+- Verified GPU output is IDENTICAL to the earlier CPU output on the same
+  20,439-email smoke test (367,902 feature rows, same sample values) --
+  this is a performance fix only, not a correctness change.
+- Status: resolved for now. Full 517k-email run should default to
+  --device gpu given ongoing CPU contention; if the GPU is later needed by
+  another process, fall back to --device cpu (n_process=1, since
+  multiprocessing gave no benefit) and expect a multi-hour run.
+- Tags: performance, spacy, gpu, cupy, cpu-contention, multi-session
