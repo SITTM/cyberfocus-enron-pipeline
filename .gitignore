@@ -1,0 +1,28 @@
+# Corpus — NEVER commit. Lives at /home/jez/data/enron/
+data/
+maildir/
+*.tar.gz
+
+# Databases and derived artefacts
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+
+# Annotation working files (may contain personal data)
+annotations/*.csv
+!annotations/template.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
