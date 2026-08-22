@@ -46,3 +46,29 @@
   another process, fall back to --device cpu (n_process=1, since
   multiprocessing gave no benefit) and expect a multi-hour run.
 - Tags: performance, spacy, gpu, cupy, cpu-contention, multi-session
+
+[2026-08-22] GPU memory freed (killed llama-server) -- throughput unchanged
+- Action: user directed killing the llama-server process (PID 5583,
+  gemma4-coder-q4_k_m.gguf, ~9GB VRAM) to free GPU memory for this pipeline.
+  Confirmed killed; GPU free memory went from ~3GB to ~11.6GB.
+- Re-benchmarked GPU batch sizes with the freed memory: batch=128 -> 22.2
+  docs/sec, 256 -> 24.9, 512 -> 30.0, 1024 -> 27.5 docs/sec.
+- Finding: essentially NO improvement over the earlier VRAM-constrained
+  batch=64 result (29.6 docs/sec). Best-of-run (batch=512, 30.0/sec) is
+  within noise of the earlier constrained measurement.
+- Conclusion: the bottleneck is NOT GPU VRAM or batch size. `top` showed
+  load average climbing to 38.5 (up from 17-23 earlier) during this
+  benchmark -- CPU contention from other concurrent sessions on this shared
+  machine is the actual limiting factor, since spaCy tokenization and
+  Python-level doc/orchestration overhead run on CPU regardless of which
+  device runs the neural net forward pass. Freeing GPU memory does not
+  address a CPU-bound bottleneck.
+- Fix: set batch_size=512 as the default for --device gpu (marginal best
+  measured value). Did not pursue further tuning -- throughput on this
+  machine is bounded by external load that varies independently of any
+  pipeline configuration choice.
+- Practical implication for the full 517k-email run: expect ~25-30 docs/sec
+  regardless of device choice while other sessions are active on this
+  machine; ETA is therefore ~4.8-5.7 hours, and this figure will not
+  improve materially from further GPU/batch tuning.
+- Tags: performance, gpu, cupy, cpu-contention, batch-size

@@ -100,10 +100,15 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", type=Path, required=True)
     ap.add_argument("--n-process", type=int, default=1)
-    ap.add_argument("--batch-size", type=int, default=200)
+    ap.add_argument("--batch-size", type=int, default=None)
     ap.add_argument("--device", choices=["cpu", "gpu"], default="cpu")
     args = ap.parse_args()
-    run(args.db, batch_size=args.batch_size, n_process=args.n_process, device=args.device)
+    # Measured best on this machine (see troubleshooting.log): batch=512 for GPU,
+    # 200 for CPU. Throughput is dominated by CPU-side tokenization contention
+    # from other processes on this shared machine either way -- these are best
+    # available defaults, not a tuned optimum.
+    batch_size = args.batch_size or (512 if args.device == "gpu" else 200)
+    run(args.db, batch_size=batch_size, n_process=args.n_process, device=args.device)
 
 
 if __name__ == "__main__":
