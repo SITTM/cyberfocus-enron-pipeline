@@ -7,6 +7,19 @@ methodology briefing and prior-work survey circulated to academic partners.
 **No data ships with this repo.** The corpus lives outside the working tree
 at `/home/jez/data/enron/` and is never committed (`.gitignore`).
 
+## Setup
+
+New to this project? Follow **[docs/SETUP.md](docs/SETUP.md)** — it covers
+Linux, macOS and Windows, assumes no GPU, and ends with a verifiable
+4-custodian smoke test. Short version:
+
+```
+python3 scripts/bootstrap.py    # Windows: py -3 scripts\bootstrap.py
+```
+
+The `Usage` commands below use this machine's paths and GPU defaults; SETUP.md
+is the portable version.
+
 ## Pipeline stages
 
 Run in order; each is idempotent and resumable via `stage_status`.

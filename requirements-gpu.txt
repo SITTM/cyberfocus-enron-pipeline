@@ -1,0 +1,7 @@
+# Optional GPU acceleration for analyze.py --device gpu.
+# Requires an NVIDIA GPU with a CUDA 12.x driver. Install *after*
+# requirements.txt:
+#   pip install -r requirements-gpu.txt
+# Not needed to run the pipeline; analyze.py defaults to --device cpu.
+-r requirements.txt
+cupy-cuda12x==12.3.0

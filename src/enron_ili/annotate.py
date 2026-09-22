@@ -24,7 +24,7 @@ def run(db_path: Path, out_csv: Path, top_n: int) -> None:
         (top_n,),
     ).fetchall()
 
-    with out_csv.open("w", newline="") as f:
+    with out_csv.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow([
             "person_id", "canonical_email", "domain", "is_enron", "sent_count",

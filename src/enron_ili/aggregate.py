@@ -60,8 +60,24 @@ def run(db_path: Path, feature_set_version: str, out_csv: Path, min_emails: int 
         )
     ]
     if not feature_names:
-        print(f"No features found for version {feature_set_version}")
-        return
+        # Exiting 0 here would make a mismatched --feature-set-version look like
+        # a successful run that happened to have nothing to say. It doesn't:
+        # it means analyze.py has not populated this version.
+        available = [
+            r[0] for r in conn.execute(
+                "SELECT DISTINCT feature_set_version FROM feature ORDER BY 1"
+            )
+        ]
+        conn.close()
+        raise SystemExit(
+            f"aggregate.py: no features found for version {feature_set_version!r}.\n"
+            + (
+                f"  Versions present in {db_path}: {', '.join(available)}\n"
+                f"  Re-run with --feature-set-version matching one of those."
+                if available else
+                f"  The feature table is empty -- run analyze.py against {db_path} first."
+            )
+        )
 
     person_rows = conn.execute(
         """SELECT p.person_id, p.canonical_email, p.role, COUNT(DISTINCT e.email_id) AS n_emails
@@ -74,7 +90,7 @@ def run(db_path: Path, feature_set_version: str, out_csv: Path, min_emails: int 
         (feature_set_version, min_emails),
     ).fetchall()
 
-    with out_csv.open("w", newline="") as f:
+    with out_csv.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(
             [BASE_COLUMN_TITLES["person_id"], BASE_COLUMN_TITLES["canonical_email"],
@@ -102,7 +118,9 @@ def run(db_path: Path, feature_set_version: str, out_csv: Path, min_emails: int 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", type=Path, required=True)
-    ap.add_argument("--feature-set-version", default="v1-placeholder")
+    # must match analyze.FEATURE_VERSION -- a stale default here silently
+    # produces an empty report on a DB that only holds the current version.
+    ap.add_argument("--feature-set-version", default="v2-placeholder")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--min-emails", type=int, default=0)
     args = ap.parse_args()

@@ -154,7 +154,7 @@ def ingest_file(conn: sqlite3.Connection, path: Path, maildir_root: Path) -> Non
 def run(db_path: Path, maildir_root: Path, custodians: list[str], batch_size: int = 500) -> None:
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys = ON")
-    schema = (Path(__file__).parent / "schema.sql").read_text()
+    schema = (Path(__file__).parent / "schema.sql").read_text(encoding="utf-8")
     conn.executescript(schema)
 
     files = []

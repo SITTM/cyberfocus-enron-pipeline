@@ -58,7 +58,7 @@ def run(db_path: Path, out_csv: Path, min_chars: int = MIN_CHARS_FOR_DEDUP) -> N
 
     dup_groups = {h: members for h, members in groups.items() if len(members) > 1}
 
-    with out_csv.open("w", newline="") as f:
+    with out_csv.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow([
             "group_id", "content_hash", "group_size", "email_id", "message_id",
