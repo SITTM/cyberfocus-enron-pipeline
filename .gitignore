@@ -9,8 +9,12 @@ maildir/
 *.sqlite3
 *.parquet
 
-# Annotation working files (may contain personal data)
-annotations/*.csv
+# Annotation working files (contain personal data). Everything in here is
+# excluded regardless of extension -- the per-reviewer sheets are .csv but the
+# split manifest is .json, and an extension-based rule silently missed it.
+# The repository is PUBLIC; a stray `git add annotations/` must not publish
+# real people's email addresses.
+annotations/*
 !annotations/template.csv
 
 # Python
