@@ -252,10 +252,15 @@ expensive work of reading and cleaning half a million emails is never repeated.
 This is real private correspondence from real people, most of whom did nothing
 wrong and never consented to any of this.
 
+**The code repository is public.** The data is not, and must never end up there.
+Anything committed is visible to everyone instantly and permanently — deleting
+it afterwards does not help, because forks and caches survive.
+
 - **Keep the corpus and anything derived from it off shared drives, cloud sync
   folders and email.**
-- **Never commit data to the repository.** It's configured to refuse, and
-  there's no legitimate reason to override that.
+- **Never commit data to the repository.** It's configured to refuse.
+  **Never use `git add -f`** — that flag overrides exactly the protection
+  keeping personal data off a public page.
 - Keep it on your machine, in the location the setup script chose.
 
 ---

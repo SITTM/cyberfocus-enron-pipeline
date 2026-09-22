@@ -201,10 +201,18 @@ errors, drop the flag.
 
 ## Handling note
 
-The corpus is real personal correspondence from real people. Keep it, and any
-`.sqlite` or `.csv` derived from it, **out of the repo and off shared drives**.
-`.gitignore` already excludes `db/`, `annotations/*.csv` and `maildir/`; don't
-use `git add -f` to get around it.
+**This repository is public.** Anything committed here is visible to the entire
+internet, immediately and permanently — a later deletion does not undo it,
+because forks, clones and caches survive.
+
+The corpus is real personal correspondence from real people, most of whom did
+nothing wrong. Keep it, and any `.sqlite` or `.csv` derived from it, **out of
+the repo and off shared drives**. `.gitignore` already excludes `db/`,
+`annotations/*.csv` and `maildir/`.
+
+**Never use `git add -f` in this repository.** That flag exists to override
+exactly the protection that is keeping personal data off a public page. If you
+think you need it, you don't — ask first.
 
 ---
 
