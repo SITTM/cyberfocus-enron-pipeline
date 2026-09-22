@@ -120,3 +120,65 @@
   the GPU at run time. Crash was clean (occurred before any stage_status
   commit); no partial/corrupt state to clean up.
 - Tags: extraction, signature-stripping, dedup, gpu, cupy, oom
+
+[2026-09-22] Collaborator "dependency issues" / the "Python 3.8.3" report
+- Symptom: three collaborators (all Windows) could not get the pipeline
+  installed. The report reaching Jez was that "some dependencies need Python
+  3.8.3" while the main Python is 3.14.5.
+- Finding: there is no Python 3.8 requirement anywhere in the chain. The "3.8"
+  being read is the *spaCy* version -- requirements.txt pins spacy==3.8.16 and
+  en_core_web_sm-3.8.0, and that model's README says "spaCy >=3.8.0,<3.9.0",
+  which is the line most often misread as a Python constraint. Real window from
+  package metadata: spacy 3.8.16 needs >=3.9,<3.15 and numpy 2.5.3 needs >=3.12,
+  so Python 3.12-3.14. 3.14 is fully supported; 3.8 is impossible (numpy would
+  refuse) and EOL since Oct 2024. Written up in
+  docs/python-version-requirements.md.
+- Also checked: every compiled dependency (spacy, thinc, blis, murmurhash,
+  cymem, preshed, srsly, numpy, pydantic-core, cupy-cuda12x) publishes a
+  cp314 win_amd64 wheel. Nothing needs a compiler on Windows. quotequail is
+  sdist-only but pure Python.
+- Actual root causes, found by running on a clean Windows 11 VM:
+  1. NO USABLE PYTHON. The VM had no `py` launcher (it ships only with
+     python.org installers, not the Store package) and the `python.exe` on
+     PATH was the Microsoft Store "App Execution Alias" stub in
+     %LOCALAPPDATA%\Microsoft\WindowsApps -- a shim that opens the Store, not
+     an interpreter. This looks exactly like "Python is installed" while
+     nothing works, and is the most likely thing biting the collaborators.
+  2. Only 5 of 50 packages were pinned. requirements.txt pinned the direct
+     dependencies; the ~45 transitive ones floated, so no two machines matched.
+- Fix: pyproject.toml + uv.lock (all 50 pinned, hashed, universal resolution
+  incl. Windows), scripts/bootstrap-v2.py (diagnose -> uv -> locked sync ->
+  corpus -> pipeclean -> bootstrap-report.json with classified failures), and
+  scripts/bootstrap.ps1 for Windows. bootstrap.ps1 exists because
+  bootstrap-v2.py is itself a Python script: uv is a native binary needing no
+  Python, so it is installed first and then installs CPython 3.14. A
+  collaborator therefore needs no pre-existing Python at all.
+- Verification: clean ubuntu:24.04 container (no pip, no uv, system Python
+  3.12.3) -> uv self-installed, fetched CPython 3.14.7, installed 46 locked
+  packages, full pipeclean PASSED, 43 tests / 224s, exact known-good row counts.
+- Status: Linux proven end to end. Windows proven through dependency install
+  (47 packages on Python 3.14.7); corpus + pipeclean re-run in progress after
+  the TLS fix below.
+- Tags: dependencies, python-version, spacy, windows, uv, onboarding
+
+[2026-09-22] Three bugs the clean-machine runs caught (none reproducible on dev box)
+- bug-004 GPU probe: parse_cuda_version matched only "CUDA Version:", but
+  driver 610.43.02 prints "CUDA UMD Version: 13.3". Compounded by gpu_verdict
+  testing `major == 12` when NVIDIA drivers are backward compatible -- a CUDA
+  13 driver runs cupy-cuda12x fine. Now `>= 12`.
+- bug-005 run() helper baked timeout=120 into subprocess.run while also taking
+  **kw, so every caller passing its own timeout crashed with "got multiple
+  values for keyword argument 'timeout'". Never seen on the dev box because uv
+  was already installed there, so the long-timeout paths never ran. Caught by
+  the Docker container on the first attempt.
+- bug-006 CERTIFICATE_VERIFY_FAILED on Windows only. bootstrap-v2.py runs under
+  the CPython uv installs (python-build-standalone), which ships no CA bundle
+  on Windows, so urllib could not verify any certificate and the corpus
+  download always failed. Does not reproduce on Linux, where the same build
+  finds /etc/ssl/certs. Fixed by loading certifi's bundle (already in uv.lock)
+  from the venv. The failure classifier had matched the signature but blamed a
+  corporate TLS proxy, which was misleading -- remedy text now names both causes.
+- Lesson: all three were invisible on the development machine. The clean
+  container caught one, the clean Windows VM caught two. Neither substitutes
+  for the other.
+- Tags: clean-machine, docker, windows-vm, tls, certifi, gpu, subprocess

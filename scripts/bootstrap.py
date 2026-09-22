@@ -30,7 +30,7 @@ print = functools.partial(print, flush=True)  # keep output ordered against pip'
 ROOT = Path(__file__).resolve().parent.parent
 VENV = ROOT / ".venv"
 MIN_PY = (3, 11)
-MAX_PY = (3, 13)  # inclusive
+MAX_PY = (3, 14)  # inclusive
 
 CORPUS_URL = "https://www.cs.cmu.edu/~enron/enron_mail_20150507.tar.gz"
 TARBALL = "enron_mail_20150507.tar.gz"
@@ -212,10 +212,12 @@ def ensure_corpus(explicit: Path | None, corpus_dir: Path) -> Path:
         download(CORPUS_URL, tarball)
         print("[ok] downloaded")
 
-    print(f"[..] extracting to {maildir} (a few minutes, ~2.6GB)")
+    print(f"[..] extracting to {maildir} (bloody ages.. ~2.6GB, and it is "
+          f"~500k tiny files -- minutes on Linux, 1-3 HOURS on Windows)")
     with tarfile.open(tarball) as tf:
         # filter="data" refuses absolute paths and traversal outside the
         # destination. It is the default from 3.14; set it for 3.11-3.13.
+        # Explicit either way, so behaviour is identical across 3.11-3.14.
         tf.extractall(corpus_dir, filter="data")
 
     n = custodian_count(maildir)

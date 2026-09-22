@@ -4,4 +4,4 @@
 #   pip install -r requirements-gpu.txt
 # Not needed to run the pipeline; analyze.py defaults to --device cpu.
 -r requirements.txt
-cupy-cuda12x==12.3.0
+cupy-cuda12x==14.2.0

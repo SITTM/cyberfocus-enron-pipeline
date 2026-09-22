@@ -32,3 +32,6 @@ venv/
 .vscode/
 
 db/
+
+# Diagnostic report written by scripts/bootstrap-v2.py
+bootstrap-report.json

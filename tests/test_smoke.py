@@ -11,6 +11,7 @@ for you):
 
 Takes about 4 minutes; almost all of it is stage 3 (spaCy, on CPU).
 """
+import contextlib
 import os
 import subprocess
 import sqlite3
@@ -90,7 +91,14 @@ class TestPipelineSmoke(unittest.TestCase):
             )
 
     def count(self, table: str) -> int:
-        with sqlite3.connect(self.db) as conn:
+        # closing(), not a bare `with`: sqlite3's connection context manager
+        # commits the transaction but does NOT close the connection. The handle
+        # then lives until garbage collection, and on Windows an open file
+        # cannot be deleted -- so tearDownClass blew up with
+        # "WinError 32 ... being used by another process" and reported the whole
+        # setup as FAILED even though every pipeline assertion had passed.
+        # (buglog bug-007)
+        with contextlib.closing(sqlite3.connect(self.db)) as conn:
             return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
 
     def test_row_counts_match_known_good_run(self) -> None:

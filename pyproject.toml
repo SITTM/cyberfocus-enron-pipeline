@@ -1,0 +1,34 @@
+# Dependency definition for the uv-managed setup path (scripts/bootstrap-v2.py).
+#
+# This project is NOT an installable package -- the pipeline stages are run as
+# standalone scripts (src/enron_ili/<stage>.py), exactly as tests/test_smoke.py
+# invokes them. This file exists so `uv lock` can pin the WHOLE dependency
+# chain, not just the five direct dependencies that requirements.txt names.
+#
+# requirements.txt is kept for the older pip path (scripts/bootstrap.py) and
+# lists the same direct dependencies.
+[project]
+name = "enron-ili-pipeline"
+version = "0.1.0"
+description = "Enron interpersonal-language-indicator pipeline"
+# spacy 3.8.x declares >=3.9,<3.15; numpy 2.5.x needs >=3.12. 3.12-3.14 is the
+# real supported window. There is no Python 3.8 requirement anywhere in this
+# chain -- "3.8" in requirements.txt is the *spaCy* version, not a Python one.
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "spacy==3.8.16",
+    "spacy-legacy==3.0.12",
+    "spacy-loggers==1.0.5",
+    "quotequail==0.5.0",
+    "en-core-web-sm",
+]
+
+[project.optional-dependencies]
+# analyze.py --device gpu only. NVIDIA + CUDA 12.x; no macOS wheels exist.
+gpu = ["cupy-cuda12x==14.2.0"]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+en-core-web-sm = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl" }

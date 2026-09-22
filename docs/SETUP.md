@@ -13,7 +13,7 @@ required.** Allow 45–60 minutes, nearly all of it downloading the corpus.
 | | Requirement |
 |---|---|
 | OS | Linux, macOS, or Windows 10/11 |
-| Python | 3.11, 3.12 or 3.13 — check with `python3 --version` (Windows: `py -3 --version`) |
+| Python | 3.11, 3.12, 3.13 or 3.14 — check with `python3 --version` (Windows: `py -3 --version`) |
 | Disk | **~6 GB free**: 0.5 GB tarball + 2.6 GB corpus + 0.2 GB venv + ~0.1 GB working database |
 | RAM | 8 GB comfortable; 4 GB works |
 | Network | ~700 MB of downloads |
@@ -37,12 +37,74 @@ Everything below runs from this directory.
 
 ## 2. Run the bootstrap
 
-```bash
-python3 scripts/bootstrap.py          # Linux / macOS
-py -3 scripts\bootstrap.py            # Windows (PowerShell)
+```powershell
+# Windows (PowerShell) -- works even if you have no Python at all
+powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
 ```
 
-That is the whole setup. It:
+```bash
+# Linux / macOS
+python3 scripts/bootstrap-v2.py
+```
+
+That is the whole setup.
+
+> **Windows: use `bootstrap.ps1`, not `py`.** Two things routinely go wrong on a
+> fresh Windows machine, and we reproduced both on a clean Windows 11 VM:
+>
+> * **`py` often doesn't exist.** The `py` launcher ships only with the
+>   python.org installers, not the Microsoft Store package.
+> * **`python.exe` on your PATH is probably not Python.** Windows ships an "App
+>   Execution Alias" stub at
+>   `%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe`. Running it opens the
+>   Microsoft Store. It looks like Python is installed when nothing is.
+>
+> `bootstrap.ps1` sidesteps both. `uv` is a single native binary that needs no
+> Python, so it is installed first and then installs a real CPython 3.14 for
+> you. **You do not need to install Python yourself.**
+
+> **Hitting dependency errors?** Use `bootstrap-v2.py` above, not the older
+> `bootstrap.py`. v2 installs [uv](https://docs.astral.sh/uv/), has uv download
+> the exact CPython 3.14 this project needs — so whichever Python you already
+> have stops mattering — and installs all 50 packages pinned in `uv.lock`
+> rather than the 5 that `requirements.txt` pins. That combination is what
+> fixes "works on your machine but not mine".
+>
+> **You do not need Python 3.8.** If someone has told you that, see
+> [docs/python-version-requirements.md](python-version-requirements.md): `3.8`
+> in `requirements.txt` is the *spaCy* version. The real window is Python
+> 3.12–3.14, and 3.14 is fine.
+
+`bootstrap-v2.py`:
+
+1. **diagnoses your machine** — every Python it can find, your GPU, free disk,
+   network reachability, proxy settings, and (Windows) whether long paths are
+   enabled
+2. installs `uv` if you don't have it — one user-local binary, no admin rights
+3. installs CPython 3.14 and the locked dependency set (~250 MB)
+4. **looks for an Enron corpus you already have** — and only downloads the
+   423 MB archive if it can't find a complete one
+5. extracts it and confirms all 150 custodian directories are present
+6. runs the **pipeclean run**: the full five-stage pipeline over four
+   custodians, ~20,000 emails, about 4 minutes on CPU
+7. writes `bootstrap-report.json` and tells you whether it worked
+
+**If anything fails, it does not just dump a traceback.** It matches the failure
+against known causes — missing wheels, TLS interception by a corporate proxy,
+the Windows path limit, out of disk, out of memory, an old GPU driver — prints
+the specific remedy, and writes everything to `bootstrap-report.json`. Send that
+one file; nothing else needs screenshotting.
+
+Want to know what it thinks of your machine without changing anything?
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1 --diagnose-only
+```
+
+### The older bootstrap.py
+
+`scripts/bootstrap.py` is the original venv + pip path. It still works and is
+kept as a fallback for a machine that cannot install uv at all. It:
 
 1. checks your Python version
 2. creates `.venv` and installs the dependencies (~250 MB of packages)
@@ -63,19 +125,38 @@ analysis; see [Troubleshooting](#troubleshooting).
 
 ### Useful flags
 
+These work on `bootstrap-v2.py`:
+
 | Flag | Use |
 |---|---|
 | `--corpus DIR` | Corpus lives somewhere else, or you want it downloaded somewhere specific. Defaults to `~/data/enron` (`C:\enron` on Windows). |
-| `--gpu` | Also install `cupy` for NVIDIA GPU acceleration. Optional — see the end. |
-| `--skip-smoke-test` | Set up without verifying. Not recommended. |
+| `--diagnose-only` | Report on your machine and stop. Changes nothing. |
+| `--gpu` / `--no-gpu` | Force the GPU extra on or off. Default: install it only if a suitable NVIDIA GPU is detected. The GPU is never required. |
+| `--venv DIR` | Put the environment somewhere other than `.venv`. |
+| `--skip-pipeclean` | Set up without verifying. Not recommended. |
+
+`bootstrap.py` takes `--corpus`, `--gpu` and `--skip-smoke-test`.
 
 > **Already have the corpus?** Point at it and nothing is downloaded:
-> `python3 scripts/bootstrap.py --corpus /path/to/enron`
+> `python3 scripts/bootstrap-v2.py --corpus /path/to/enron`
 > The bootstrap also checks `$ENRON_MAILDIR`, `~/data/enron/maildir`,
 > `C:\enron\maildir` and `./maildir` automatically.
 
 > **Windows PowerShell refuses to run scripts?** Run once:
 > `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`
+
+> **Windows: extraction is slow — expect 1–3 hours.** The corpus is ~500,000
+> very small files, and creating that many is simply slow on Windows. Progress
+> is printed every 60 seconds so you can see it is not stuck. (Measured in a
+> Windows 11 VM with Defender switched off, so this is the floor, not an
+> antivirus problem; a physical machine with an SSD should do better.)
+>
+> If your antivirus does real-time scanning — most do — it will add to that.
+> Excluding the corpus folder first, in an admin PowerShell, can help:
+> `Add-MpPreference -ExclusionPath 'C:\enron'`. The corpus is public research
+> data, but skip this if your organisation's policy says not to. If that command
+> returns error `0x800106ba`, Defender is not running on your machine and there
+> is nothing to exclude.
 
 > **Windows: keep the corpus path short**, e.g. `C:\enron`. The maildir tree is
 > deeply nested, and extracting under a long path (like your Documents folder)
@@ -186,7 +267,7 @@ errors, drop the flag.
 |---|---|
 | `python3: command not found` (Windows) | Use `py -3` or `python`. |
 | `running scripts is disabled on this system` | PowerShell execution policy — see section 2. |
-| *"Python 3.x is not supported"* | Install Python 3.11–3.13 and re-run with that interpreter. |
+| *"Python 3.x is not supported"* | Install Python 3.11–3.14 and re-run with that interpreter. |
 | Download stalls or fails | Just re-run the bootstrap; it resumes from where it stopped. |
 | *"Extraction produced only N custodian directories"* | Incomplete extraction — on Windows, almost always the path-length limit. Re-extract to `C:\enron`. |
 | `ModuleNotFoundError: No module named 'spacy'` | The venv isn't active. Re-run the activate command; your prompt should show `(.venv)`. |

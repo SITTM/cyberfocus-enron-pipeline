@@ -38,7 +38,8 @@ accept it before any link on this page will open, or before you can clone.
 
 The two files worth reading directly:
 
-- [scripts/bootstrap.py](https://github.com/SITTM/cyberfocus-enron-pipeline/blob/main/scripts/bootstrap.py) — the setup script
+- [scripts/bootstrap.ps1](https://github.com/SITTM/cyberfocus-enron-pipeline/blob/main/scripts/bootstrap.ps1) — the Windows setup script
+- [scripts/bootstrap-v2.py](https://github.com/SITTM/cyberfocus-enron-pipeline/blob/main/scripts/bootstrap-v2.py) — the setup script it hands over to
   you run in step 2 below.
 - [tests/test_smoke.py](https://github.com/SITTM/cyberfocus-enron-pipeline/blob/main/tests/test_smoke.py) — the check that your
   machine matches everyone else's.
@@ -95,11 +96,11 @@ person, not the email.** Someone who wrote 3,000 emails is one data point, not
 
 ### Before you start
 
-- **Python 3.11, 3.12 or 3.13.** Check by opening a terminal and typing
-  `python3 --version` (on Windows: `py -3 --version`). If you don't have it, get
-  it from [python.org/downloads](https://www.python.org/downloads/) — and on
-  Windows, **tick "Add python.exe to PATH"** during installation. That checkbox
-  causes more setup failures than everything else combined.
+- **On Windows: nothing. You do not need to install Python.** The setup script
+  installs the exact Python this project needs, for this project only. It won't
+  touch or conflict with any Python you already have.
+- On Linux or macOS: any Python 3.12–3.14 to start the script off
+  (`python3 --version`).
 - **About 6 GB of free disk space.**
 - A reasonable internet connection — there's roughly 700 MB to download.
 
@@ -112,19 +113,22 @@ cd cyberfocus-enron-pipeline
 
 ### Step 2 — run one command
 
-```
-python3 scripts/bootstrap.py
-```
-
 On Windows PowerShell:
 
 ```
-py -3 scripts\bootstrap.py
+powershell -ExecutionPolicy Bypass -File scripts\bootstrap.ps1
+```
+
+On Linux or macOS:
+
+```
+python3 scripts/bootstrap-v2.py
 ```
 
 That is the entire setup. Go and do something else for an hour.
 
-Behind the scenes it: checks your Python version, builds an isolated
+Behind the scenes it: reports what it finds on your machine, installs the right
+Python if you haven't got one, builds an isolated
 environment so this project's software can't interfere with anything else on
 your machine, **looks for an Enron corpus you might already have and only
 downloads the 423 MB archive if it can't find one**, unpacks it, checks all 150
@@ -152,9 +156,13 @@ don't start any analysis. Send me whatever the terminal printed.
 
 | If... | Run |
 |---|---|
-| You already have the Enron corpus somewhere | `python3 scripts/bootstrap.py --corpus /path/to/enron` — nothing gets downloaded |
-| You have an NVIDIA graphics card and want it used | `python3 scripts/bootstrap.py --gpu` — optional, saves about two minutes, not worth any trouble |
-| You want to re-check everything later | `python3 scripts/bootstrap.py` again — it skips to the verification |
+| You already have the Enron corpus somewhere | add `--corpus /path/to/enron` — nothing gets downloaded |
+| You want to see what it makes of your machine, changing nothing | add `--diagnose-only` — takes seconds, writes `bootstrap-report.json` |
+| You have an NVIDIA graphics card | nothing to do — it is detected and used automatically. Optional; saves about two minutes |
+| You want to re-check everything later | run the same command again — it skips to the verification |
+
+(On Windows put these after `...\bootstrap.ps1`; on Linux/macOS after
+`...\bootstrap-v2.py`.)
 
 **Windows note:** let it use the default location, `C:\enron`. The email
 archive has very deeply nested folders, and Windows has an old limit on how long
@@ -269,9 +277,10 @@ it afterwards does not help, because forks and caches survive.
 
 | What you see | What to do |
 |---|---|
-| `python3: command not found` on Windows | Use `py -3` instead of `python3` |
-| PowerShell says running scripts is disabled | Run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once, then retry |
-| "Python 3.x is not supported" | Install Python 3.11–3.13 |
+| `python3` or `py` "is not recognized" on Windows | Expected — you don't need either. Use the `bootstrap.ps1` command above |
+| Windows says Python is installed, but nothing works | The `python.exe` on your PATH is probably the Microsoft Store placeholder, not Python. `bootstrap.ps1` ignores it and installs a real one |
+| Someone tells you the pipeline needs Python 3.8 | It doesn't — that's the *spaCy* version, not a Python version. See `docs/python-version-requirements.md` |
+| PowerShell says running scripts is disabled | The command above already includes `-ExecutionPolicy Bypass`, so use it exactly as written |
 | The download stalls or fails | Run the command again — it resumes |
 | "Extraction produced only N custodian directories" | The archive unpacked incompletely. On Windows this is the path-length problem — unpack to `C:\enron` |
 | The smoke test fails on row counts | Something is genuinely different. Send me the output — **please don't edit the expected numbers to make it pass** |

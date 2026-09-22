@@ -1,6 +1,7 @@
 """Build the full-corpus database and produce the annotation sheets.
 
-Run this after scripts/bootstrap.py has reported success.
+Run this after the setup (scripts/bootstrap.ps1 on Windows,
+scripts/bootstrap-v2.py otherwise) has reported success.
 
     python3 scripts/prepare_annotation.py --reviewers ana ben cleo
 
@@ -43,7 +44,8 @@ def venv_python() -> Path:
     p = (ROOT / ".venv" / ("Scripts" if sys.platform == "win32" else "bin")
          / ("python.exe" if sys.platform == "win32" else "python"))
     if not p.exists():
-        sys.exit("No .venv found -- run scripts/bootstrap.py first.")
+        sys.exit("No .venv found -- run the setup first: bootstrap.ps1 on "
+                 "Windows, scripts/bootstrap-v2.py otherwise.")
     return p
 
 
@@ -60,7 +62,7 @@ def find_corpus(explicit: Path | None) -> Path:
     found = bs.find_corpus(explicit.expanduser() if explicit else None)
     if not found:
         sys.exit(
-            "Could not find the corpus. Run scripts/bootstrap.py first, or "
+            "Could not find the corpus. Run the setup first, or "
             "pass --corpus with the path to it."
         )
     return found
@@ -72,7 +74,7 @@ def ingest_all(maildir: Path) -> None:
         sys.exit(
             f"Only {len(custodians)} custodian directories in {maildir}, "
             f"expected {EXPECTED_CUSTODIANS}. The corpus is incomplete -- "
-            f"re-run scripts/bootstrap.py. Not continuing, because the top 500 "
+            f"re-run the setup. Not continuing, because the top 500 "
             f"senders of a partial corpus are not the top 500 of the corpus."
         )
     DB.parent.mkdir(parents=True, exist_ok=True)
