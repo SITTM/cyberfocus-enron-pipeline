@@ -154,12 +154,17 @@ def main() -> None:
     print(
         f"\n{'=' * 68}\n"
         f"Annotation sheets are in {OUT}/\n\n"
-        f"Send each reviewer only their own file. Do NOT send the manifest,\n"
-        f"and do NOT commit any of it -- this repository is public and these\n"
-        f"files contain real people's email addresses.\n\n"
-        f"Reviewers: see 'The annotation task' in the ClickUp onboarding page.\n"
-        f"Leave evidence_url blank where no public record exists -- an empty\n"
-        f"cell is correct and expected for most rows.\n"
+        f"These stay on your machine -- nothing needs sending anywhere.\n\n"
+        f"Do NOT commit any of it. This repository is public and these files\n"
+        f"contain real people's email addresses; `git add -f` would publish\n"
+        f"them permanently.\n\n"
+        f"If you are dividing the work between people, send each person only\n"
+        f"their own file and keep the manifest back -- it lists the rows\n"
+        f"everyone reviews as a consistency check, and knowing which they are\n"
+        f"biases them.\n\n"
+        f"See 'The annotation task' in the ClickUp onboarding page. Leave\n"
+        f"evidence_url blank where no public record exists -- an empty cell\n"
+        f"is correct and expected for most rows.\n"
         f"{'=' * 68}\n"
     )
 
