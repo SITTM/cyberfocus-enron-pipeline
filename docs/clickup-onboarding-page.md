@@ -29,6 +29,23 @@ comment.
 
 ---
 
+## Where the code lives
+
+https://github.com/SITTM/cyberfocus-enron-pipeline
+
+**The repository is private.** Jez is sending you an invite — you'll need to
+accept it before any link on this page will open, or before you can clone.
+
+The two files worth reading directly:
+
+- [scripts/bootstrap.py](https://github.com/SITTM/cyberfocus-enron-pipeline/blob/main/scripts/bootstrap.py) — the setup script
+  you run in step 2 below.
+- [tests/test_smoke.py](https://github.com/SITTM/cyberfocus-enron-pipeline/blob/main/tests/test_smoke.py) — the check that your
+  machine matches everyone else's.
+
+These are linked rather than copied here on purpose: GitHub always shows the
+current version, whereas a copy pasted into the page would silently go out of date.
+
 ## What we need from you
 
 Get the pipeline running on your own machine and confirm it produces the same
@@ -146,6 +163,61 @@ silently lose files. The setup script checks for this and refuses to continue
 rather than leaving you with a half-corpus.
 
 ---
+
+## Running the pipeline yourself
+
+The setup script proves the pipeline works, but throws its database away
+afterwards. To keep one, activate the environment first — your prompt should
+then show `(.venv)`:
+
+```
+source .venv/bin/activate        # Linux / macOS
+.venv\Scripts\Activate.ps1       # Windows
+```
+
+Tell it where the corpus is, and make the output folders:
+
+```
+export MAILDIR=~/data/enron/maildir      # Linux / macOS
+$env:MAILDIR = "C:\enron\maildir"        # Windows
+mkdir -p db annotations
+```
+
+Then run the five stages **in order** — each depends on the one before. All of
+them are resumable, so re-running after a failure picks up where it stopped.
+
+```
+# 1. Ingest — headers into the database (~15 seconds)
+python3 src/enron_ili/ingest.py \
+    --db db/enron.sqlite --maildir "$MAILDIR" \
+    --custodians skilling-j lay-k allen-p sanders-r
+
+# 2. Extract — separate authored text from quoted/forwarded (~20 seconds)
+python3 src/enron_ili/extract.py --db db/enron.sqlite --maildir "$MAILDIR"
+
+# 3. Analyse — word and part-of-speech counts (~3 minutes)
+python3 src/enron_ili/analyze.py --db db/enron.sqlite
+
+# 4. Annotate — top-500 sender spreadsheet for manual review
+python3 src/enron_ili/annotate.py \
+    --db db/enron.sqlite --out annotations/top500.csv --top-n 500
+
+# 5. Aggregate — per-person, per-role averages
+python3 src/enron_ili/aggregate.py \
+    --db db/enron.sqlite --out annotations/person_stats.csv
+```
+
+Add more names to the `--custodians` list in step 1 to widen the analysis —
+there are 150 in the corpus. Stages 2–5 pick up the new emails automatically.
+
+**Expected results on the four-custodian set** — if your numbers differ,
+something is wrong, so please say so rather than pressing on:
+
+- 20,439 emails
+- 14,007 people
+- 367,902 measurements
+- `top500.csv` — 501 lines (a header plus 500 senders)
+- `person_stats.csv` — 3,593 lines (a header plus 3,592 people)
 
 ## The most important thing on this page
 
