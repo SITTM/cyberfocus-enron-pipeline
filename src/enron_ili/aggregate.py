@@ -9,6 +9,45 @@ import csv
 import sqlite3
 from pathlib import Path
 
+# Universal POS tag -> plain-English label, for column headers.
+POS_LABELS = {
+    "ADJ": "Adjective",
+    "ADP": "Adposition",
+    "ADV": "Adverb",
+    "AUX": "Auxiliary Verb",
+    "CCONJ": "Coordinating Conjunction",
+    "DET": "Determiner",
+    "INTJ": "Interjection",
+    "NOUN": "Noun",
+    "NUM": "Numeral",
+    "PART": "Particle",
+    "PRON": "Pronoun",
+    "PROPN": "Proper Noun",
+    "PUNCT": "Punctuation",
+    "SCONJ": "Subordinating Conjunction",
+    "SYM": "Symbol",
+    "VERB": "Verb",
+    "X": "Other/Unclassified",
+}
+
+BASE_COLUMN_TITLES = {
+    "person_id": "Person ID",
+    "canonical_email": "Email Address",
+    "role": "Role",
+    "n_emails": "Number of Emails",
+}
+
+
+def feature_column_title(feature_name: str) -> str:
+    """Turn a raw feature name (e.g. 'pos_ADJ', 'word_count') into a mean-column title."""
+    if feature_name == "word_count":
+        return "Mean Word Count"
+    if feature_name.startswith("pos_"):
+        tag = feature_name[len("pos_"):]
+        label = POS_LABELS.get(tag, tag)
+        return f"Mean {label} Count"
+    return f"Mean {feature_name}"
+
 
 def run(db_path: Path, feature_set_version: str, out_csv: Path, min_emails: int = 0) -> None:
     conn = sqlite3.connect(db_path)
@@ -37,7 +76,11 @@ def run(db_path: Path, feature_set_version: str, out_csv: Path, min_emails: int 
 
     with out_csv.open("w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["person_id", "canonical_email", "role", "n_emails"] + [f"mean_{n}" for n in feature_names])
+        w.writerow(
+            [BASE_COLUMN_TITLES["person_id"], BASE_COLUMN_TITLES["canonical_email"],
+             BASE_COLUMN_TITLES["role"], BASE_COLUMN_TITLES["n_emails"]]
+            + [feature_column_title(n) for n in feature_names]
+        )
         for person_id, addr, role, n_emails in person_rows:
             means = conn.execute(
                 """SELECT f.feature_name, AVG(f.value)

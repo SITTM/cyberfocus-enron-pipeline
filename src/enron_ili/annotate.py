@@ -1,7 +1,7 @@
 """Generate the top-N-sender review CSV for manual role annotation.
 
 Per docs/methodology-briefing.md §3: the domain rule labels everyone
-automatically (enron.com -> Employee, external -> Other). This script
+automatically (enron.com/enron.net -> Employee, external -> Other). This script
 surfaces the top N senders by authored-email volume for human review, with
 placeholder evidence columns the reviewer fills in. It does NOT invent
 evidence URLs — that would be worse than an empty cell in a reviewed paper.

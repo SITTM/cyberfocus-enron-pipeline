@@ -13,6 +13,10 @@ from pathlib import Path
 
 STAGE_VERSION = "v1"
 
+# Enron used both enron.com and enron.net for internal addresses (the latter
+# mostly Lotus Notes-migrated accounts); both count as Enron for the domain rule.
+ENRON_DOMAINS = ("enron.com", "enron.net")
+
 AUTOMATED_TOKENS = (
     "no-reply", "noreply", "postmaster", "mailer-daemon", "listserv",
     "announce", "announcements", "webmaster", "notification", "notifications",
@@ -40,7 +44,7 @@ def get_or_create_person(conn: sqlite3.Connection, addr: str) -> int:
         return row[0]
 
     domain = addr.rsplit("@", 1)[-1]
-    is_enron_domain = domain == "enron.com"
+    is_enron_domain = domain in ENRON_DOMAINS
     role = "Employee" if is_enron_domain else "Other"
     cur = conn.execute(
         """INSERT INTO person
